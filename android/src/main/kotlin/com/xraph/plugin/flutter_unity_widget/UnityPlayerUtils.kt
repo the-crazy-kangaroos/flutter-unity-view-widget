@@ -9,6 +9,7 @@ import android.util.Log
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.WindowManager
+import androidx.core.view.WindowCompat
 import com.unity3d.player.IUnityPlayerLifecycleEvents
 import com.unity3d.player.UnityPlayer
 import java.util.concurrent.CopyOnWriteArraySet
@@ -62,7 +63,9 @@ class UnityPlayerUtils {
 
                         // restore window layout
                         if (!options.fullscreenEnabled) {
-                            activity.window.addFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN)
+                            WindowCompat.setDecorFitsSystemWindows(window, false)
+                            window.navigationBarColor = 0
+                            window.statusBarColor = 0
                             activity.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
                         }
                     }
