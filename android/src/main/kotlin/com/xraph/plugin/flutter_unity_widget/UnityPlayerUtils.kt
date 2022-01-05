@@ -63,9 +63,7 @@ class UnityPlayerUtils {
 
                         // restore window layout
                         if (!options.fullscreenEnabled) {
-                            WindowCompat.setDecorFitsSystemWindows(window, false)
-                            window.navigationBarColor = 0
-                            window.statusBarColor = 0
+                            WindowCompat.setDecorFitsSystemWindows(activity.window, false)
                             activity.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
                         }
                     }
