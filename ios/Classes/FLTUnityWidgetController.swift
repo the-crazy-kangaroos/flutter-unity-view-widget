@@ -30,14 +30,20 @@ class FLTUnityWidgetController: NSObject, FLTUnityOptionsSink, FlutterPlatformVi
         self.channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
         globalChannel = self.channel
         
-        self.channel?.setMethodCallHandler(self.methodHandler)
+        self.channel?.setMethodCallHandler { [weak self] in
+			self?.methodHandler($0, result: $1)
+		}
         self.initView()
     }
+	
+	deinit {
+		channel?.setMethodCallHandler(nil)
+	}
     
     func methodHandler(_ call: FlutterMethodCall, result: FlutterResult) {
         if call.method == "unity#dispose" {
-            self.dispose()
-            result(nil)
+			self.dispose()
+			result(nil)
         } else {
             self.reattachView()
             if call.method == "unity#isReady" {
@@ -125,38 +131,25 @@ class FLTUnityWidgetController: NSObject, FLTUnityOptionsSink, FlutterPlatformVi
         if (GetUnityPlayerUtils() != nil) {
             GetUnityPlayerUtils()?.initUnity()
             let unityView = GetUnityPlayerUtils()?.ufw?.appController()?.rootView
-            if let superview = unityView?.superview {
-                unityView?.removeFromSuperview()
-                superview.layoutIfNeeded()
+            if let unityView = unityView {
+				unityView.removeFromSuperview()
+                fltUnityView.addSubview(unityView)
             }
-
-//            if let unityView = unityView {
-//                fltUnityView.addSubview(unityView)
-//            }
-//            GetUnityPlayerUtils()?.resume()
         }
     }
 
     func reattachView() {
-        let unityView = GetUnityPlayerUtils()?.ufw?.appController()?.rootView
-        let superview = unityView?.superview
-        if superview != fltUnityView {
-            attachView()
-        }
-        if GetUnityPlayerUtils() != nil {
-            GetUnityPlayerUtils()?.resume()
-        }
+		attachView()
+		GetUnityPlayerUtils()?.resume()
     }
     
     func dispose() {
-        channel?.setMethodCallHandler(nil)
-        // globalChannel?.setMethodCallHandler(nil)
         if GetUnityPlayerUtils() != nil {
             let unityView = GetUnityPlayerUtils()?.ufw?.appController()?.rootView
             let superview = unityView?.superview
             unityView?.removeFromSuperview()
             superview?.layoutIfNeeded()
-            // GetUnityPlayerUtils()?.pause()
+			GetUnityPlayerUtils()?.pause()
         }
     }
 
