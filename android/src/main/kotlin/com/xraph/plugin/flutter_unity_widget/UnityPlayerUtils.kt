@@ -1,20 +1,22 @@
 package com.xraph.plugin.flutter_unity_widget
 
-import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.Context
+import android.graphics.Color
+import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
+
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+
 import android.view.WindowManager
+import androidx.core.view.WindowCompat
 import com.unity3d.player.IUnityPlayerLifecycleEvents
 import com.unity3d.player.UnityPlayer
 import java.util.concurrent.CopyOnWriteArraySet
-
 
 class UnityPlayerUtils {
 
@@ -24,14 +26,10 @@ class UnityPlayerUtils {
         var activity: Activity? = null
         var options: FlutterUnityWidgetOptions = FlutterUnityWidgetOptions()
         var unityPlayer: UnityPlayer? = null
-        var applicationContext: Context? = null
-        // var unityView: UnityView? = null
 
-        var isWorking: Boolean = false
         var isUnityReady: Boolean = false
         var isUnityPaused: Boolean = false
         var isUnityLoaded: Boolean = false
-        var disposed: Boolean = false
         var isUnityInBackground: Boolean = false
 
         private val mUnityEventListeners = CopyOnWriteArraySet<UnityEventListener>()
@@ -39,85 +37,120 @@ class UnityPlayerUtils {
         /**
          * Create a new unity player with callback
          */
-        @SuppressLint("NewApi")
-        fun initInternalView(context: Activity, lst: View.OnAttachStateChangeListener): UnityView {
-            val unityView = UnityView(context)
-            unityView.addOnAttachStateChangeListener(lst)
-            return  unityView
-        }
-
-        private fun focus() {
-            unityPlayer!!.windowFocusChanged(true)
-            unityPlayer!!.requestFocus()
-            unityPlayer!!.resume()
-        }
-
-        /**
-         * Create a new unity player with callback
-         */
-        @SuppressLint("NewApi")
-        fun createPlayer(context: Activity, ule: IUnityPlayerLifecycleEvents, callback: OnCreateUnityViewCallback?) {
-            if (unityPlayer != null) {
+        fun createPlayer(activity: Activity, ule: IUnityPlayerLifecycleEvents, reInitialize: Boolean, callback: OnCreateUnityViewCallback?) {
+            if (unityPlayer != null && !reInitialize) {
                 callback?.onReady()
                 return
             }
 
             try {
-                 if (!Looper.getMainLooper().thread.isAlive) return
                 Handler(Looper.getMainLooper()).post {
-                // context.runOnUiThread {
-                    // context.window?.setFormat(PixelFormat.RGBA_8888)
-                    unityPlayer = UnityPlayer(context, ule)
+                    if (!reInitialize) {
+                        activity.window.setFormat(PixelFormat.RGBA_8888)
+                        unityPlayer = UnityPlayer(activity, ule)
+                    }
 
-                    // wait a moment. fix unity cannot start when startup.
                     try {
-                        // wait a moment. fix unity cannot start when startup.
-                        Thread.sleep(1000)
-                    } catch (e: java.lang.Exception) {
-                    }
-
-                    addUnityViewToBackground()
-                    focus()
-
-                    if (!options.fullscreenEnabled) {
-                        context.window.addFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
-                        context.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                    } else {
-                        context.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-                    }
-
-                    // restore window layout
-                    /* if (!options.fullscreenEnabled) {
-                        activity!!.window.addFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN)
-                        activity!!.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
-                        activity!!.window.addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-                    } else  {
-                        activity!!.window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            activity!!.window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+                        if (!reInitialize) {
+                            // wait a moment. fix unity cannot start when startup.
+                            Thread.sleep(700)
                         }
+                    } catch (e: Exception) {
+                    }
 
-                        activity!!.window.apply {
-                            // decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-                            } else {
-                                decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                            }
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                                statusBarColor = Color.TRANSPARENT
+                    addUnityViewToBackground(activity)
+                    // start unity
+                    if (!reInitialize) {
+                        unityPlayer!!.windowFocusChanged(true)
+                        unityPlayer!!.requestFocus()
+                        unityPlayer!!.resume()
+
+                        // restore window layout
+                        if (!options.fullscreenEnabled) {
+                            activity.window.addFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN)
+                            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                                activity.window.addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
                             }
                         }
-
-                        // WindowCompat.setDecorFitsSystemWindows(activity!!.window, false)
                     }
 
-                    // restore window layout
-                    if (options.hideStatus) {
-                        hideStatusBar()
-                    }
-                     */
                     isUnityReady = true
+                    isUnityLoaded = true
+
+                    callback?.onReady()
+                }
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, e.toString())
+            }
+        }
+
+        /**
+         * Create a new unity player with callback
+         */
+        fun createPlayer(ule: IUnityPlayerLifecycleEvents, reInitialize: Boolean, callback: OnCreateUnityViewCallback?) {
+            if (unityPlayer != null && !reInitialize) {
+                callback?.onReady()
+                return
+            }
+
+            try {
+                Handler(Looper.getMainLooper()).post {
+                    if (!reInitialize) {
+                        activity?.window?.setFormat(PixelFormat.RGBA_8888)
+                        unityPlayer = UnityPlayer(activity, ule)
+                    }
+
+                    try {
+                        if (!reInitialize) {
+                            // wait a moment. fix unity cannot start when startup.
+                            Thread.sleep(700)
+                        }
+                    } catch (e: Exception) {
+                    }
+
+                    addUnityViewToBackground(activity!!)
+                    // start unity
+                    if (!reInitialize) {
+                        unityPlayer!!.windowFocusChanged(true)
+                        unityPlayer!!.requestFocus()
+                        unityPlayer!!.resume()
+
+                        // restore window layout
+                        if (!options.fullscreenEnabled) {
+                            activity!!.window.addFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN)
+                            activity!!.window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                            activity!!.window.addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+                        } else  {
+                            activity!!.window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                activity!!.window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+                            }
+
+                            activity!!.window.apply {
+                                // decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                    decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                                } else {
+                                    decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                }
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                    statusBarColor = Color.TRANSPARENT
+                                }
+                            }
+
+                            // WindowCompat.setDecorFitsSystemWindows(activity!!.window, false)
+                        }
+
+                        // restore window layout
+                        if (options.hideStatus) {
+                            hideStatusBar()
+                        }
+                    }
+
+                    isUnityReady = true
+                    isUnityLoaded = true
+
                     callback?.onReady()
                 }
             } catch (e: Exception) {
@@ -159,7 +192,6 @@ class UnityPlayerUtils {
             }
         }
 
-        @SuppressLint("NewApi")
         private fun hideStatusBar() {
             // window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN
             if (unityPlayer != null) {
@@ -215,7 +247,7 @@ class UnityPlayerUtils {
             mUnityEventListeners.remove(listener)
         }
 
-        private fun addUnityViewToBackground(activity: Activity) {
+        fun addUnityViewToBackground(activity: Activity) {
             if (unityPlayer == null) {
                 return
             }
@@ -232,73 +264,53 @@ class UnityPlayerUtils {
             isUnityInBackground = true
         }
 
-//        fun addUnityViewToGroup(group: ViewGroup) {
-//            if (unityPlayer == null) {
-//                return
-//            }
-//
-//            if (unityPlayer!!.parent != null) {
-//                (unityPlayer!!.parent as ViewGroup).removeView(unityPlayer)
-//            }
-//
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-//                unityPlayer!!.z = -1f
-//            }
-//
-//            val layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
-//            group.addView(unityPlayer, 0, layoutParams)
-//
-//            unityPlayer!!.windowFocusChanged(true)
-//            unityPlayer!!.requestFocus()
-//            unityPlayer!!.resume()
-//        }
-
-        fun removeUnityViewFromGroup(group: ViewGroup) {
-            if (unityPlayer == null) {
-                return
-            }
-
-            if (unityPlayer!!.parent != null && group.childCount > 0) {
-                group.removeView(unityPlayer)
-            }
-        }
-
-        fun removeUnityViewFromGroup() {
+        fun restoreUnityViewFromBackground(activity: Activity) {
             if (unityPlayer == null) {
                 return
             }
 
             if (unityPlayer!!.parent != null) {
-                (unityPlayer!!.parent as ViewGroup).removeView(unityPlayer)
+                (unityPlayer!!.parent as ViewGroup).addView(unityPlayer)
             }
-        }
 
-        // new
-        fun addUnityViewToBackground() {
-            if (unityPlayer == null) {
-                return
-            }
-            if (unityPlayer!!.parent != null) {
-                (unityPlayer!!.parent as ViewGroup).removeView(unityPlayer)
-            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                unityPlayer!!.z = -1f
+                unityPlayer!!.z = 1f
             }
-            val activity = unityPlayer!!.context as Activity
+
             val layoutParams = ViewGroup.LayoutParams(1, 1)
             activity.addContentView(unityPlayer, layoutParams)
+            isUnityInBackground = false
         }
 
         fun addUnityViewToGroup(group: ViewGroup) {
             if (unityPlayer == null) {
                 return
             }
+
             if (unityPlayer!!.parent != null) {
                 (unityPlayer!!.parent as ViewGroup).removeView(unityPlayer)
             }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                unityPlayer!!.z = -1f
+            }
+
             val layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
             group.addView(unityPlayer, 0, layoutParams)
-            focus()
+
+            unityPlayer!!.windowFocusChanged(true)
+            unityPlayer!!.requestFocus()
+            unityPlayer!!.resume()
+        }
+
+        fun removeUnityViewToGroup(group: ViewGroup) {
+            if (unityPlayer == null) {
+                return
+            }
+
+            if (unityPlayer!!.parent != null) {
+                (unityPlayer!!.parent as ViewGroup).removeView(unityPlayer)
+            }
         }
     }
 }
