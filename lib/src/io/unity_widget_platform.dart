@@ -1,22 +1,28 @@
-part of flutter_unity_widget;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-abstract class UnityWidgetFlutterPlatform extends PlatformInterface {
+import '../helpers/events.dart';
+import 'device_method.dart';
+
+abstract class UnityWidgetPlatform extends PlatformInterface {
   /// Constructs a UnityViewFlutterPlatform.
-  UnityWidgetFlutterPlatform() : super(token: _token);
+  UnityWidgetPlatform() : super(token: _token);
 
   static final Object _token = Object();
 
-  static UnityWidgetFlutterPlatform _instance =
-      MethodChannelUnityWidgetFlutter();
+  static UnityWidgetPlatform _instance = MethodChannelUnityWidget();
 
-  /// The default instance of [UnityWidgetFlutterPlatform] to use.
+  /// The default instance of [UnityWidgetPlatform] to use.
   ///
   /// Defaults to [MethodChannelUnityWidgetFlutter].
-  static UnityWidgetFlutterPlatform get instance => _instance;
+  static UnityWidgetPlatform get instance => _instance;
 
   /// Platform-specific plugins should set this with their own platform-specific
-  /// class that extends [UnityWidgetFlutterPlatform] when they register themselves.
-  static set instance(UnityWidgetFlutterPlatform instance) {
+  /// class that extends [UnityWidgetPlatform] when they register themselves.
+  static set instance(UnityWidgetPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
   }
@@ -113,6 +119,7 @@ abstract class UnityWidgetFlutterPlatform extends PlatformInterface {
     Map<String, dynamic> unityOptions = const {},
     Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
     bool? useAndroidViewSurf,
+    String? unitySrcUrl,
   }) {
     throw UnimplementedError('buildView() has not been implemented.');
   }
@@ -133,6 +140,7 @@ abstract class UnityWidgetFlutterPlatform extends PlatformInterface {
     Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
     Map<String, dynamic> unityOptions = const <String, dynamic>{},
     bool? useAndroidViewSurf,
+    String? unitySrcUrl,
   }) {
     return buildView(
       creationId,
@@ -140,6 +148,7 @@ abstract class UnityWidgetFlutterPlatform extends PlatformInterface {
       gestureRecognizers: gestureRecognizers,
       unityOptions: unityOptions,
       useAndroidViewSurf: useAndroidViewSurf,
+      unitySrcUrl: unitySrcUrl,
     );
   }
 }

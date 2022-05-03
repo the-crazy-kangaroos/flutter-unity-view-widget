@@ -1,26 +1,20 @@
-part of flutter_unity_widget;
+import 'dart:async';
+import 'dart:convert';
 
-/// Error thrown when an unknown unity ID is provided to a method channel API.
-class UnknownUnityIDError extends Error {
-  /// Creates an assertion error with the provided [unityId] and optional
-  /// [message].
-  UnknownUnityIDError(this.unityId, [this.message]);
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:stream_transform/stream_transform.dart';
 
-  /// The unknown ID.
-  final int unityId;
+import '../helpers/events.dart';
+import '../helpers/misc.dart';
+import '../helpers/types.dart';
+import 'unity_widget_platform.dart';
+import 'windows_unity_widget_view.dart';
 
-  /// Message describing the assertion error.
-  final Object? message;
-
-  String toString() {
-    if (message != null) {
-      return "Unknown unity ID $unityId: ${Error.safeToString(message)}";
-    }
-    return "Unknown unity ID $unityId";
-  }
-}
-
-class MethodChannelUnityWidgetFlutter extends UnityWidgetFlutterPlatform {
+class MethodChannelUnityWidget extends UnityWidgetPlatform {
   // Every method call passes the int unityId
   late final Map<int, MethodChannel> _channels = {};
 
@@ -47,6 +41,7 @@ class MethodChannelUnityWidgetFlutter extends UnityWidgetFlutterPlatform {
     MethodChannel? channel = _channels[unityId];
     if (channel == null) {
       channel = MethodChannel('plugin.xraph.com/unity_view_$unityId');
+
       channel.setMethodCallHandler(
           (MethodCall call) => _handleMethodCall(call, unityId));
       _channels[unityId] = channel;
@@ -66,7 +61,11 @@ class MethodChannelUnityWidgetFlutter extends UnityWidgetFlutterPlatform {
   /// Dispose of the native resources.
   @override
   Future<void> dispose({int? unityId}) async {
-    if (unityId != null) await channel(unityId).invokeMethod('unity#dispose');
+    try {
+      if (unityId != null) await channel(unityId).invokeMethod('unity#dispose');
+    } catch (e) {
+      // ignore
+    }
   }
 
   // The controller we need to broadcast the different events coming
@@ -148,16 +147,26 @@ class MethodChannelUnityWidgetFlutter extends UnityWidgetFlutterPlatform {
 
   @override
   Widget buildViewWithTextDirection(
-      int creationId, PlatformViewCreatedCallback onPlatformViewCreated,
-      {required TextDirection textDirection,
-      Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
-      Map<String, dynamic> unityOptions = const <String, dynamic>{},
-      bool? useAndroidViewSurf}) {
+    int creationId,
+    PlatformViewCreatedCallback onPlatformViewCreated, {
+    required TextDirection textDirection,
+    Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
+    Map<String, dynamic> unityOptions = const <String, dynamic>{},
+    bool? useAndroidViewSurf,
+    bool? height,
+    bool? width,
+    bool? unityWebSource,
+    String? unitySrcUrl,
+  }) {
     final String _viewType = 'plugin.xraph.com/unity_view';
 
     if (useAndroidViewSurf != null) useAndroidViewSurface = useAndroidViewSurf;
 
     final Map<String, dynamic> creationParams = unityOptions;
+
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return WindowsUnityWidgetView();
+    }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
       if (!useAndroidViewSurface) {
@@ -220,6 +229,7 @@ class MethodChannelUnityWidgetFlutter extends UnityWidgetFlutterPlatform {
     Map<String, dynamic> unityOptions = const {},
     Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers,
     bool? useAndroidViewSurf,
+    String? unitySrcUrl,
   }) {
     return buildViewWithTextDirection(
       creationId,
@@ -228,15 +238,17 @@ class MethodChannelUnityWidgetFlutter extends UnityWidgetFlutterPlatform {
       gestureRecognizers: gestureRecognizers,
       unityOptions: unityOptions,
       useAndroidViewSurf: useAndroidViewSurf,
+      unitySrcUrl: unitySrcUrl,
     );
   }
 
   @override
-  Future<void> postMessage(
-      {required int unityId,
-      required String gameObject,
-      required String methodName,
-      required String message}) async {
+  Future<void> postMessage({
+    required int unityId,
+    required String gameObject,
+    required String methodName,
+    required String message,
+  }) async {
     await channel(unityId).invokeMethod('unity#postMessage', <String, dynamic>{
       'gameObject': gameObject,
       'methodName': methodName,
@@ -245,11 +257,12 @@ class MethodChannelUnityWidgetFlutter extends UnityWidgetFlutterPlatform {
   }
 
   @override
-  Future<void> postJsonMessage(
-      {required int unityId,
-      required String gameObject,
-      required String methodName,
-      required Map message}) async {
+  Future<void> postJsonMessage({
+    required int unityId,
+    required String gameObject,
+    required String methodName,
+    required Map message,
+  }) async {
     await channel(unityId).invokeMethod('unity#postMessage', <String, dynamic>{
       'gameObject': gameObject,
       'methodName': methodName,

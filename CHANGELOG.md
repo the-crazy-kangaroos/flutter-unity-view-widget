@@ -1,7 +1,18 @@
-## 2020.3.25
+## 2022.1.0+2
 
-* Fixed android freeze issue but only works with OpenGL3
-* Using unity versioning
+* Fixed analysis errors
+
+## 2022.1.0+1
+
+* Full support for web
+* Fixed android view refocus issue when detached or diposed
+
+## 2022.1.0
+
+* Fixed android freezing with AndroidView
+* Fixed FUW export scripts
+
+CHANGELOG.md
 
 ## 4.2.5+1
 
